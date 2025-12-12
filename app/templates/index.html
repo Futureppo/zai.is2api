@@ -216,19 +216,32 @@
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Redis Key</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account ID</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discord Token</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zai JWT</th>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TTL (s)</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="token in zaiTokens" :key="token.key">
+                                        <template x-for="token in zaiTokens" :key="token.account_id">
                                             <tr>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono" x-text="token.key"></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="token.ttl"></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="token.account_id"></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500" x-text="token.discord_token_preview"></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500" x-text="token.zai_token_preview"></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <span :class="token.ttl > 0 ? 'text-green-600' : 'text-red-600'" x-text="token.ttl > 0 ? token.ttl : 'Expired'"></span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <button @click="refreshZaiToken(token.account_id)"
+                                                            class="text-indigo-600 hover:text-indigo-900 font-medium">
+                                                        Refresh Now
+                                                    </button>
+                                                </td>
                                             </tr>
                                         </template>
                                         <tr x-show="zaiTokens.length === 0">
-                                            <td colspan="2" class="px-6 py-4 text-center text-sm text-gray-500">No active tokens found in Redis.</td>
+                                            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No active accounts found.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -545,6 +558,26 @@
                 async fetchZaiTokens() {
                     const res = await fetch(`${this.apiBase}/zai-tokens`);
                     if (res.ok) this.zaiTokens = await res.json();
+                },
+
+                async refreshZaiToken(accountId) {
+                    if(!confirm("Force refresh token for this account?")) return;
+                    try {
+                        const res = await fetch(`${this.apiBase}/zai-tokens/refresh`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ account_id: accountId })
+                        });
+                        if (res.ok) {
+                            alert("Refresh triggered successfully");
+                            this.fetchZaiTokens();
+                        } else {
+                            const err = await res.json();
+                            alert("Refresh failed: " + (err.detail || "Unknown error"));
+                        }
+                    } catch (e) {
+                        alert("Error triggering refresh");
+                    }
                 },
 
                 async fetchLogs() {

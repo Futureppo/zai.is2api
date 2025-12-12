@@ -248,17 +248,57 @@ async def delete_api_key(key_id: int, db: AsyncSession = Depends(get_db)):
 
 # --- Zai Tokens ---
 
+class RefreshTokenRequest(BaseModel):
+    account_id: int
+
 @router.get("/zai-tokens", dependencies=[Depends(verify_admin)])
-async def get_zai_tokens():
+async def get_zai_tokens(db: AsyncSession = Depends(get_db)):
     redis = await get_redis()
     tokens = []
-    async for key in redis.scan_iter(match="zai:token:*", count=100):
-        ttl = await redis.ttl(key)
+    
+    # Iterate active accounts to find their tokens in Redis
+    stmt = select(Account).where(Account.is_active == True)
+    result = await db.execute(stmt)
+    accounts = result.scalars().all()
+    
+    for account in accounts:
+        token_hash = get_token_hash(account.discord_token)
+        key = f"zai:token:{token_hash}"
+        
+        zai_token = await redis.get(key)
+        ttl = await redis.ttl(key) if zai_token else -1
+        
+        # Mask tokens for display
+        discord_preview = f"{account.discord_token[:10]}...{account.discord_token[-5:]}"
+        zai_preview = f"{zai_token[:10]}...{zai_token[-5:]}" if zai_token else "Not Available"
+        
         tokens.append({
-            "key": key,
-            "ttl": ttl
+            "account_id": account.id,
+            "discord_token_preview": discord_preview,
+            "zai_token_preview": zai_preview,
+            "status": "Active" if zai_token else "Expired/Missing",
+            "ttl": ttl,
+            "updated_at": "Now" # Simplification, real time needs extra storage
         })
+        
     return tokens
+
+@router.post("/zai-tokens/refresh", dependencies=[Depends(verify_admin)])
+async def refresh_zai_token(req: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
+    stmt = select(Account).where(Account.id == req.account_id)
+    result = await db.execute(stmt)
+    account = result.scalar_one_or_none()
+    
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+        
+    from app.services.token_manager import refresh_account_token
+    success = await refresh_account_token(db, account)
+    
+    if success:
+        return {"status": "success", "message": "Token refreshed"}
+    else:
+        raise HTTPException(status_code=500, detail=f"Refresh failed: {account.last_error}")
 
 # --- Accounts ---
 
