@@ -94,7 +94,7 @@ curl http://localhost:5000/v1/chat/completions \
 
 **Endpoint**: `http://localhost:5000/v1/models`
 
-## 🛠️ 管理面板功能
+## 管理面板功能
 
 1.  **Token 管理**：
     *   点击“新增 Token”输入 Discord Token (Session Token)。
@@ -108,6 +108,6 @@ curl http://localhost:5000/v1/chat/completions \
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Futureppo/zai.is2api&type=date&legend=top-left)](https://www.star-history.com/#Futureppo/zai.is2api&type=date&legend=top-left)
-## ⚠️ 免责声明
+## 免责声明
 
 本项目仅供逆向学习和研究使用。使用者应自行承担使用本工具产生的所有风险和责任。请遵守相关服务条款。
